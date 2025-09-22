@@ -154,7 +154,7 @@ def train_enhanced_ai_models():
 priority_model, risk_model, cluster_model, scaler, debris_clusters = train_enhanced_ai_models()
 
 debris_df['removal_priority'] = priority_model.predict(debris_df[['altitude_km', 'size_cm', 'mass_kg', 'collision_risk', 'radar_cross_section']]).round(1)
-debris_df['high_risk_prediction'] = risk_model.predict_proba(debris_df[['altitude_km', 'velocity_km_s', 'size_cm', 'inclination_deg']])[:, 1]
+debris_df['high_risk_prediction'] = risk_model.predict_proba(debris_df[['altitude_km', 'size_cm', 'inclination_deg']])[:, 1]
 debris_df['mission_cluster'] = debris_clusters
 
 st.markdown("""
