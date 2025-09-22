@@ -138,7 +138,7 @@ def train_enhanced_ai_models():
     ).clip(1, 10).round()
     priority_model = RandomForestRegressor(n_estimators=100, random_state=42)
     priority_model.fit(X_priority, y_priority)
-    risk_features = ['altitude_km', 'velocity_km_s', 'size_cm', 'inclination_deg']
+    risk_features = ['altitude_km', 'size_cm', 'inclination_deg']
     X_risk = debris_df[risk_features].copy()
     y_risk = (debris_df['collision_risk'] > 0.7).astype(int)
     risk_model = GradientBoostingClassifier(n_estimators=100, random_state=42)
