@@ -374,7 +374,7 @@ with tab3:
     if st.button("🎯 تشغيل جميع النماذج"):
         priority_input = np.array([[test_altitude, test_size, test_mass, test_risk, test_rcs]])
         predicted_priority = priority_model.predict(priority_input)[0]
-        risk_input = np.array([[test_altitude, 7.8, test_size, 45.0]])
+        risk_input = np.array([[test_altitude, test_size, 45.0]])
         risk_probability = risk_model.predict_proba(risk_input)[0][1]
         cluster_input = scaler.transform([[test_altitude, 45.0, test_size, test_mass]])
         assigned_cluster = cluster_model.predict(cluster_input)[0]
