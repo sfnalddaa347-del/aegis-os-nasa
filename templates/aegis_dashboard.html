@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AEGIS Space Debris Monitoring System - Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body { 
+            background: linear-gradient(135deg, #0c1445 0%, #1a237e 50%, #283593 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+        }
+        
+        .metric-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin: 10px 0;
+            transition: transform 0.3s ease;
+        }
+        
+        .metric-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .risk-low { color: #28a745; }
+        .risk-medium { color: #ffc107; }
+        .risk-high { color: #fd7e14; }
+        .risk-critical { color: #dc3545; }
+        
+        .chat-container {
+            height: 400px;
+            overflow-y: auto;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+        }
+        
+        .chat-message {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            padding: 10px;
+            margin: 5px 0;
+        }
+        
+        .ai-message {
+            background: rgba(0, 123, 255, 0.2);
+            border-left: 4px solid #007bff;
+        }
+        
+        .user-message {
+            background: rgba(40, 167, 69, 0.2);
+            border-left: 4px solid #28a745;
+        }
+        
+        .performance-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-left: 8px;
+        }
+        
+        .performance-excellent { background-color: #28a745; }
+        .performance-good { background-color: #ffc107; }
+        .performance-poor { background-color: #dc3545; }
+        
+        .space-object {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 10px;
+            margin: 5px 0;
+            border-left: 4px solid #007bff;
+        }
+        
+        .simulation-panel {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            color: white;
+        }
+        
+        .btn-glow {
+            box-shadow: 0 0 20px rgba(0, 123, 255, 0.5);
+            transition: all 0.3s ease;
+        }
+        
+        .btn-glow:hover {
+            box-shadow: 0 0 30px rgba(0, 123, 255, 0.8);
+            transform: translateY(-2px);
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <!-- Header -->
+        <div class="row">
+            <div class="col-12">
+                <div class="glass-panel p-4 mb-4 fade-in">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h1 class="text-white mb-0">
+                                <i class="fas fa-satellite-dish"></i>
+                                AEGIS Space Debris Monitoring System
+                            </h1>
+                            <p class="text-white-50 mb-0">نظام مراقبة حطام الفضاء المتقدم - Dashboard</p>
+                        </div>
+                        <div class="text-end">
+                            <div class="performance-indicator performance-excellent"></div>
+                            <span class="text-white">System Online</span>
+                            <br>
+                            <small class="text-white-50" id="current-time"></small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Dashboard -->
+        <div class="row">
+            <!-- Left Column - Metrics & Controls -->
+            <div class="col-lg-4">
+                <!-- System Metrics -->
+                <div class="card mb-4 fade-in">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0"><i class="fas fa-chart-line"></i> مقاييس النظام</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-6">
+                                <div class="metric-card text-center">
+                                    <h3 id="fps-metric">60</h3>
+                                    <small>FPS</small>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="metric-card text-center">
+                                    <h3 id="memory-metric">45%</h3>
+                                    <small>Memory</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-6">
+                                <div class="metric-card text-center">
+                                    <h3 id="cpu-metric">23%</h3>
+                                    <small>CPU</small>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="metric-card text-center">
+                                    <h3 id="render-metric">17ms</h3>
+                                    <small>Render Time</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Risk Assessment -->
+                <div class="card mb-4 fade-in">
+                    <div class="card-header bg-danger text-white">
+                        <h5 class="mb-0"><i class="fas fa-exclamation-triangle"></i> تقييم المخاطر</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="risk-summary">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Critical:</span>
+                                <span class="risk-critical" id="critical-count">0</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>High:</span>
+                                <span class="risk-high" id="high-count">0</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Medium:</span>
+                                <span class="risk-medium" id="medium-count">0</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Low:</span>
+                                <span class="risk-low" id="low-count">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Chat Assistant -->
+                <div class="card mb-4 fade-in">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0"><i class="fas fa-robot"></i> المساعد الذكي</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="chat-container" id="chat-container">
+                            <div class="chat-message ai-message">
+                                <strong>AEGIS AI:</strong> مرحباً! أنا مساعد AEGIS الذكي. كيف يمكنني مساعدتك؟
+                            </div>
+                        </div>
+                        <div class="input-group mt-3">
+                            <input type="text" class="form-control" id="chat-input" placeholder="اسأل المساعد الذكي...">
+                            <button class="btn btn-success" onclick="sendMessage()">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Center Column - 3D Visualization & Charts -->
+            <div class="col-lg-5">
+                <!-- 3D Visualization -->
+                <div class="card mb-4 fade-in">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0"><i class="fas fa-globe"></i> التصور ثلاثي الأبعاد</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="three-container" style="height: 300px; background: #000; border-radius: 10px; position: relative;">
+                            <canvas id="three-canvas" style="width: 100%; height: 100%;"></canvas>
+                            <div class="position-absolute top-0 end-0 p-2">
+                                <button class="btn btn-sm btn-outline-light" onclick="resetCamera()">
+                                    <i class="fas fa-home"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts -->
+                <div class="row">
+                    <div class="col-6">
+                        <div class="card fade-in">
+                            <div class="card-header bg-warning text-dark">
+                                <h6 class="mb-0">توزيع المخاطر</h6>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="risk-chart" height="200"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="card fade-in">
+                            <div class="card-header bg-info text-white">
+                                <h6 class="mb-0">الأداء</h6>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="performance-chart" height="200"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column - Space Objects & Simulations -->
+            <div class="col-lg-3">
+                <!-- Space Objects -->
+                <div class="card mb-4 fade-in">
+                    <div class="card-header bg-dark text-white">
+                        <h5 class="mb-0"><i class="fas fa-satellite"></i> الأجسام الفضائية</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="space-objects-list" style="max-height: 300px; overflow-y: auto;">
+                            <!-- سيتم ملؤها بالبيانات -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Simulations -->
+                <div class="card mb-4 fade-in">
+                    <div class="card-header bg-secondary text-white">
+                        <h5 class="mb-0"><i class="fas fa-cogs"></i> المحاكاة</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="simulation-panel">
+                            <h6>متلازمة كيسلر</h6>
+                            <div class="progress mb-2">
+                                <div class="progress-bar bg-danger" id="kessler-progress" style="width: 0%"></div>
+                            </div>
+                            <small id="kessler-status">جاري التحضير...</small>
+                            
+                            <hr class="my-3">
+                            
+                            <h6>محاكاة التصادم</h6>
+                            <div class="progress mb-2">
+                                <div class="progress-bar bg-warning" id="collision-progress" style="width: 0%"></div>
+                            </div>
+                            <small id="collision-status">جاري التحضير...</small>
+                            
+                            <hr class="my-3">
+                            
+                            <button class="btn btn-primary btn-sm w-100" onclick="runSimulations()">
+                                <i class="fas fa-play"></i> تشغيل المحاكاة
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Scientific Models -->
+                <div class="card mb-4 fade-in">
+                    <div class="card-header bg-purple text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                        <h5 class="mb-0"><i class="fas fa-flask"></i> النماذج العلمية</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-outline-primary btn-sm" onclick="runSGP4()">
+                                <i class="fas fa-rocket"></i> SGP4 Propagation
+                            </button>
+                            <button class="btn btn-outline-success btn-sm" onclick="runAtmospheric()">
+                                <i class="fas fa-cloud"></i> Atmospheric Model
+                            </button>
+                            <button class="btn btn-outline-warning btn-sm" onclick="runMonteCarlo()">
+                                <i class="fas fa-dice"></i> Monte Carlo
+                            </button>
+                            <button class="btn btn-outline-info btn-sm" onclick="validateCalculations()">
+                                <i class="fas fa-check-circle"></i> Validation
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Global variables
+        let scene, camera, renderer, objects = [];
+        let riskChart, performanceChart;
+        let updateInterval;
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDashboard();
+            initialize3D();
+            initializeCharts();
+            startRealTimeUpdates();
+        });
+
+        function initializeDashboard() {
+            updateTime();
+            setInterval(updateTime, 1000);
+            loadSpaceObjects();
+            loadRiskAssessment();
+            loadPerformanceMetrics();
+        }
+
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('current-time').textContent = now.toLocaleString('ar-SA');
+        }
+
+        // 3D Visualization
+        function initialize3D() {
+            const container = document.getElementById('three-container');
+            const canvas = document.getElementById('three-canvas');
+            
+            // Scene setup
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setClearColor(0x000011, 0.8);
+
+            // Earth
+            const earthGeometry = new THREE.SphereGeometry(2, 32, 32);
+            const earthMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x4A90E2,
+                transparent: true,
+                opacity: 0.8
+            });
+            const earth = new THREE.Mesh(earthGeometry, earthMaterial);
+            scene.add(earth);
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.3);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+            directionalLight.position.set(5, 5, 5);
+            scene.add(directionalLight);
+
+            // Camera position
+            camera.position.z = 8;
+
+            // Animation loop
+            animate();
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Rotate Earth
+            scene.children[0].rotation.y += 0.01;
+            
+            // Update space objects
+            objects.forEach(obj => {
+                obj.rotation.y += 0.02;
+            });
+            
+            renderer.render(scene, camera);
+        }
+
+        function resetCamera() {
+            camera.position.set(0, 0, 8);
+            camera.lookAt(0, 0, 0);
+        }
+
+        // Charts
+        function initializeCharts() {
+            // Risk Distribution Chart
+            const riskCtx = document.getElementById('risk-chart').getContext('2d');
+            riskChart = new Chart(riskCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Low', 'Medium', 'High', 'Critical'],
+                    datasets: [{
+                        data: [0, 0, 0, 0],
+                        backgroundColor: ['#28a745', '#ffc107', '#fd7e14', '#dc3545']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                font: { size: 10 }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Performance Chart
+            const perfCtx = document.getElementById('performance-chart').getContext('2d');
+            performanceChart = new Chart(perfCtx, {
+                type: 'line',
+                data: {
+                    labels: ['1m', '2m', '3m', '4m', '5m'],
+                    datasets: [{
+                        label: 'FPS',
+                        data: [60, 58, 62, 59, 61],
+                        borderColor: '#007bff',
+                        backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            min: 50,
+                            max: 70
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+
+        // Real-time updates
+        function startRealTimeUpdates() {
+            updateInterval = setInterval(() => {
+                loadPerformanceMetrics();
+                loadRiskAssessment();
+                updateSpaceObjects();
+            }, 5000);
+        }
+
+        // API calls
+        async function loadSpaceObjects() {
+            try {
+                const response = await fetch('/api/space-objects');
+                const data = await response.json();
+                displaySpaceObjects(data.objects.slice(0, 10)); // Show first 10
+                update3DObjects(data.objects.slice(0, 20)); // Show first 20 in 3D
+            } catch (error) {
+                console.error('Error loading space objects:', error);
+            }
+        }
+
+        function displaySpaceObjects(objects) {
+            const container = document.getElementById('space-objects-list');
+            container.innerHTML = '';
+            
+            objects.forEach(obj => {
+                const div = document.createElement('div');
+                div.className = 'space-object';
+                div.innerHTML = `
+                    <div class="d-flex justify-content-between">
+                        <strong>${obj.name}</strong>
+                        <span class="risk-${obj.risk_level}">${obj.risk_level}</span>
+                    </div>
+                    <small class="text-muted">${obj.type} - ${obj.altitude.toFixed(0)} km</small>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function update3DObjects(objects) {
+            // Clear existing objects
+            objects.forEach(obj => scene.remove(obj));
+            objects = [];
+
+            // Add new objects
+            objects.forEach(obj => {
+                const geometry = new THREE.SphereGeometry(0.05, 8, 8);
+                const material = new THREE.MeshPhongMaterial({ 
+                    color: getRiskColor(obj.risk_level),
+                    emissive: getRiskColor(obj.risk_level),
+                    emissiveIntensity: 0.2
+                });
+                const mesh = new THREE.Mesh(geometry, material);
+                
+                // Position based on altitude and inclination
+                const radius = 2.5 + (obj.altitude / 10000);
+                const angle = Math.random() * Math.PI * 2;
+                mesh.position.set(
+                    radius * Math.cos(angle),
+                    radius * Math.sin(angle) * Math.cos(obj.inclination * Math.PI / 180),
+                    radius * Math.sin(angle) * Math.sin(obj.inclination * Math.PI / 180)
+                );
+                
+                scene.add(mesh);
+                objects.push(mesh);
+            });
+        }
+
+        function getRiskColor(riskLevel) {
+            switch(riskLevel) {
+                case 'low': return 0x28a745;
+                case 'medium': return 0xffc107;
+                case 'high': return 0xfd7e14;
+                case 'critical': return 0xdc3545;
+                default: return 0xffffff;
+            }
+        }
+
+        async function loadRiskAssessment() {
+            try {
+                const response = await fetch('/api/risk-assessment');
+                const data = await response.json();
+                updateRiskDisplay(data.summary);
+                updateRiskChart(data.summary);
+            } catch (error) {
+                console.error('Error loading risk assessment:', error);
+            }
+        }
+
+        function updateRiskDisplay(summary) {
+            document.getElementById('critical-count').textContent = summary.critical_risk;
+            document.getElementById('high-count').textContent = summary.high_risk;
+            document.getElementById('medium-count').textContent = summary.medium_risk;
+            document.getElementById('low-count').textContent = summary.low_risk;
+        }
+
+        function updateRiskChart(summary) {
+            riskChart.data.datasets[0].data = [
+                summary.low_risk,
+                summary.medium_risk,
+                summary.high_risk,
+                summary.critical_risk
+            ];
+            riskChart.update();
+        }
+
+        async function loadPerformanceMetrics() {
+            try {
+                const response = await fetch('/api/performance/metrics');
+                const data = await response.json();
+                updatePerformanceDisplay(data.metrics);
+                updatePerformanceChart(data.metrics);
+            } catch (error) {
+                console.error('Error loading performance metrics:', error);
+            }
+        }
+
+        function updatePerformanceDisplay(metrics) {
+            document.getElementById('fps-metric').textContent = Math.round(metrics.fps);
+            document.getElementById('memory-metric').textContent = Math.round(metrics.memory) + '%';
+            document.getElementById('cpu-metric').textContent = Math.round(metrics.cpu) + '%';
+            document.getElementById('render-metric').textContent = Math.round(metrics.render_time) + 'ms';
+        }
+
+        function updatePerformanceChart(metrics) {
+            const newData = performanceChart.data.datasets[0].data;
+            newData.shift();
+            newData.push(metrics.fps);
+            performanceChart.update();
+        }
+
+        // AI Chat
+        async function sendMessage() {
+            const input = document.getElementById('chat-input');
+            const message = input.value.trim();
+            if (!message) return;
+
+            // Add user message
+            addChatMessage(message, 'user');
+            input.value = '';
+
+            // Show typing indicator
+            const typingId = addChatMessage('يكتب...', 'ai', true);
+
+            try {
+                const response = await fetch('/api/ai/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: message })
+                });
+                const data = await response.json();
+
+                // Remove typing indicator
+                removeChatMessage(typingId);
+
+                // Add AI response
+                addChatMessage(data.response, 'ai');
+            } catch (error) {
+                removeChatMessage(typingId);
+                addChatMessage('عذراً، حدث خطأ في معالجة طلبك.', 'ai');
+            }
+        }
+
+        function addChatMessage(message, type, isTyping = false) {
+            const container = document.getElementById('chat-container');
+            const div = document.createElement('div');
+            const id = isTyping ? 'typing-' + Date.now() : null;
+            
+            div.className = `chat-message ${type}-message`;
+            div.id = id;
+            div.innerHTML = `<strong>${type === 'ai' ? 'AEGIS AI' : 'أنت'}:</strong> ${message}`;
+            
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+            
+            return id;
+        }
+
+        function removeChatMessage(id) {
+            const element = document.getElementById(id);
+            if (element) element.remove();
+        }
+
+        // Simulations
+        async function runSimulations() {
+            // Kessler Syndrome
+            updateSimulationProgress('kessler', 0, 'بدء المحاكاة...');
+            for (let i = 0; i <= 100; i += 10) {
+                await new Promise(resolve => setTimeout(resolve, 200));
+                updateSimulationProgress('kessler', i, `جاري المحاكاة... ${i}%`);
+            }
+            updateSimulationProgress('kessler', 100, 'اكتملت المحاكاة');
+
+            // Collision Simulation
+            updateSimulationProgress('collision', 0, 'بدء المحاكاة...');
+            for (let i = 0; i <= 100; i += 15) {
+                await new Promise(resolve => setTimeout(resolve, 150));
+                updateSimulationProgress('collision', i, `جاري المحاكاة... ${i}%`);
+            }
+            updateSimulationProgress('collision', 100, 'اكتملت المحاكاة');
+        }
+
+        function updateSimulationProgress(type, progress, status) {
+            document.getElementById(`${type}-progress`).style.width = progress + '%';
+            document.getElementById(`${type}-status`).textContent = status;
+        }
+
+        // Scientific Models
+        async function runSGP4() {
+            try {
+                const response = await fetch('/api/sgp4/propagate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        object_id: 'obj_1',
+                        time_offset: 3600 
+                    })
+                });
+                const data = await response.json();
+                alert('SGP4 Propagation completed successfully!');
+            } catch (error) {
+                alert('Error running SGP4 propagation');
+            }
+        }
+
+        async function runAtmospheric() {
+            try {
+                const response = await fetch('/api/atmospheric/density', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        altitude: 400,
+                        latitude: 0,
+                        local_time: 12 
+                    })
+                });
+                const data = await response.json();
+                alert(`Atmospheric density: ${data.density.toExponential(2)} kg/m³`);
+            } catch (error) {
+                alert('Error running atmospheric model');
+            }
+        }
+
+        async function runMonteCarlo() {
+            try {
+                const response = await fetch('/api/monte-carlo/simulate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ scenario: 'kessler' })
+                });
+                const data = await response.json();
+                alert('Monte Carlo simulation completed successfully!');
+            } catch (error) {
+                alert('Error running Monte Carlo simulation');
+            }
+        }
+
+        async function validateCalculations() {
+            try {
+                const response = await fetch('/api/validation/validate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        data: { test: 'validation' },
+                        categories: ['orbital', 'atmospheric'] 
+                    })
+                });
+                const data = await response.json();
+                alert(`Validation completed. Score: ${(data.score * 100).toFixed(1)}%`);
+            } catch (error) {
+                alert('Error running validation');
+            }
+        }
+
+        // Handle Enter key in chat
+        document.getElementById('chat-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // Handle window resize
+        window.addEventListener('resize', function() {
+            if (renderer && camera) {
+                const container = document.getElementById('three-container');
+                camera.aspect = container.clientWidth / container.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(container.clientWidth, container.clientHeight);
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام AEGIS - مدير النظام</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+        .card { border: none; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        .btn { border-radius: 25px; padding: 10px 25px; }
+        .status-indicator { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-left: 8px; }
+        .status-running { background-color: #28a745; }
+        .status-stopped { background-color: #dc3545; }
+        .status-warning { background-color: #ffc107; }
+        .service-card { transition: transform 0.3s ease; }
+        .service-card:hover { transform: translateY(-5px); }
+        .log-container { max-height: 300px; overflow-y: auto; background: #f8f9fa; border-radius: 10px; padding: 15px; }
+    </style>
+</head>
+<body>
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <!-- Header -->
+                <div class="text-center mb-5">
+                    <h1 class="text-white mb-3">
+                        <i class="fas fa-satellite-dish"></i>
+                        نظام AEGIS لمراقبة حطام الفضاء
+                    </h1>
+                    <p class="text-white-50">مدير النظام - تشغيل وإدارة الخدمات</p>
+                </div>
+
+                <!-- System Status -->
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0"><i class="fas fa-info-circle"></i> حالة النظام</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>الحالة العامة:</strong> 
+                                    <span class="status-indicator {{ 'status-running' if system_status.running else 'status-stopped' }}"></span>
+                                    {{ 'يعمل' if system_status.running else 'متوقف' }}
+                                </p>
+                                <p><strong>وقت التشغيل:</strong> {{ system_status.start_time or 'غير متاح' }}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>Chrome:</strong> 
+                                    <span class="status-indicator {{ 'status-running' if system_status.chrome_opened else 'status-stopped' }}"></span>
+                                    {{ 'مفتوح' if system_status.chrome_opened else 'مغلق' }}
+                                </p>
+                                <p><strong>الوقت الحالي:</strong> {{ current_time }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Services Status -->
+                <div class="card mb-4">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0"><i class="fas fa-cogs"></i> حالة الخدمات</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3 mb-3">
+                                <div class="service-card card h-100">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-desktop fa-2x text-primary mb-2"></i>
+                                        <h6>Frontend</h6>
+                                        <span class="status-indicator {{ 'status-running' if system_status.services.frontend else 'status-stopped' }}"></span>
+                                        <small class="d-block text-muted">React App</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <div class="service-card card h-100">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-server fa-2x text-success mb-2"></i>
+                                        <h6>Backend</h6>
+                                        <span class="status-indicator {{ 'status-running' if system_status.services.backend else 'status-stopped' }}"></span>
+                                        <small class="d-block text-muted">Node.js API</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <div class="service-card card h-100">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-database fa-2x text-warning mb-2"></i>
+                                        <h6>Database</h6>
+                                        <span class="status-indicator {{ 'status-running' if system_status.services.database else 'status-stopped' }}"></span>
+                                        <small class="d-block text-muted">PostgreSQL</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <div class="service-card card h-100">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-broadcast-tower fa-2x text-info mb-2"></i>
+                                        <h6>WebSocket</h6>
+                                        <span class="status-indicator {{ 'status-running' if system_status.services.websocket else 'status-stopped' }}"></span>
+                                        <small class="d-block text-muted">Real-time</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Control Buttons -->
+                <div class="card mb-4">
+                    <div class="card-header bg-warning text-dark">
+                        <h5 class="mb-0"><i class="fas fa-play-circle"></i> أزرار التحكم</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3 mb-2">
+                                <button class="btn btn-success w-100" onclick="startSystem()">
+                                    <i class="fas fa-play"></i> تشغيل النظام
+                                </button>
+                            </div>
+                            <div class="col-md-3 mb-2">
+                                <button class="btn btn-danger w-100" onclick="stopSystem()">
+                                    <i class="fas fa-stop"></i> إيقاف النظام
+                                </button>
+                            </div>
+                            <div class="col-md-3 mb-2">
+                                <button class="btn btn-warning w-100" onclick="restartSystem()">
+                                    <i class="fas fa-redo"></i> إعادة التشغيل
+                                </button>
+                            </div>
+                            <div class="col-md-3 mb-2">
+                                <button class="btn btn-info w-100" onclick="openChrome()">
+                                    <i class="fab fa-chrome"></i> فتح Chrome
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Links -->
+                <div class="card mb-4">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0"><i class="fas fa-link"></i> روابط سريعة</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4 mb-2">
+                                <a href="http://localhost:3000" target="_blank" class="btn btn-outline-primary w-100">
+                                    <i class="fas fa-globe"></i> AEGIS Frontend
+                                </a>
+                            </div>
+                            <div class="col-md-4 mb-2">
+                                <a href="http://localhost:8000/api/health" target="_blank" class="btn btn-outline-success w-100">
+                                    <i class="fas fa-heartbeat"></i> Backend Health
+                                </a>
+                            </div>
+                            <div class="col-md-4 mb-2">
+                                <a href="http://localhost:5000/api/status" target="_blank" class="btn btn-outline-warning w-100">
+                                    <i class="fas fa-chart-line"></i> System Status
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Logs -->
+                <div class="card">
+                    <div class="card-header bg-dark text-white">
+                        <h5 class="mb-0"><i class="fas fa-file-alt"></i> سجلات النظام</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="log-container" id="logs">
+                            <p class="text-muted">جاري تحميل السجلات...</p>
+                        </div>
+                        <button class="btn btn-sm btn-outline-primary mt-2" onclick="refreshLogs()">
+                            <i class="fas fa-sync"></i> تحديث السجلات
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // تحديث حالة النظام كل 5 ثوان
+        setInterval(updateStatus, 5000);
+        
+        function updateStatus() {
+            fetch('/api/status')
+                .then(response => response.json())
+                .then(data => {
+                    // تحديث الصفحة مع البيانات الجديدة
+                    location.reload();
+                })
+                .catch(error => console.error('Error:', error));
+        }
+        
+        function startSystem() {
+            fetch('/api/start-system', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message);
+                    if (data.success) {
+                        setTimeout(() => location.reload(), 2000);
+                    }
+                })
+                .catch(error => {
+                    alert('خطأ: ' + error.message);
+                });
+        }
+        
+        function stopSystem() {
+            if (confirm('هل أنت متأكد من إيقاف النظام؟')) {
+                fetch('/api/stop-system', { method: 'POST' })
+                    .then(response => response.json())
+                    .then(data => {
+                        alert(data.message);
+                        location.reload();
+                    })
+                    .catch(error => {
+                        alert('خطأ: ' + error.message);
+                    });
+            }
+        }
+        
+        function restartSystem() {
+            if (confirm('هل تريد إعادة تشغيل النظام؟')) {
+                fetch('/api/restart-system', { method: 'POST' })
+                    .then(response => response.json())
+                    .then(data => {
+                        alert(data.message);
+                        if (data.success) {
+                            setTimeout(() => location.reload(), 3000);
+                        }
+                    })
+                    .catch(error => {
+                        alert('خطأ: ' + error.message);
+                    });
+            }
+        }
+        
+        function openChrome() {
+            fetch('/api/open-chrome', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message);
+                })
+                .catch(error => {
+                    alert('خطأ: ' + error.message);
+                });
+        }
+        
+        function refreshLogs() {
+            fetch('/api/logs')
+                .then(response => response.json())
+                .then(data => {
+                    const logsContainer = document.getElementById('logs');
+                    logsContainer.innerHTML = '';
+                    
+                    if (data.length === 0) {
+                        logsContainer.innerHTML = '<p class="text-muted">لا توجد سجلات متاحة</p>';
+                        return;
+                    }
+                    
+                    data.forEach(log => {
+                        const logDiv = document.createElement('div');
+                        logDiv.className = 'mb-3 p-3 border rounded';
+                        logDiv.innerHTML = `
+                            <h6><i class="fas fa-cog"></i> ${log.service}</h6>
+                            <pre class="mb-1"><small>${log.stdout || 'No output'}</small></pre>
+                            ${log.stderr ? `<pre class="text-danger"><small>${log.stderr}</small></pre>` : ''}
+                        `;
+                        logsContainer.appendChild(logDiv);
+                    });
+                })
+                .catch(error => {
+                    document.getElementById('logs').innerHTML = '<p class="text-danger">خطأ في تحميل السجلات</p>';
+                });
+        }
+        
+        // تحميل السجلات عند بدء الصفحة
+        document.addEventListener('DOMContentLoaded', refreshLogs);
+    </script>
+</body>
+</html>
